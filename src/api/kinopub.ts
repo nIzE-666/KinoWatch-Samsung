@@ -4,7 +4,6 @@ import { getCached, setCache, createCacheKey, invalidateCache, cachedFetch, with
 const BASE_URL = 'https://api.service-kp.com'
 const CLIENT_ID = 'xbmc'
 const CLIENT_SECRET = import.meta.env.VITE_CLIENT_SECRET || 'cgg3gtifu46urtfp2zp1nqtba0k2ezxh'
-const APP_VERSION = __APP_VERSION__
 
 let onAuthErrorCallback: (() => void) | null = null
 
@@ -875,27 +874,26 @@ export async function updateDeviceSettings(deviceId: number, settings: UpdateSet
   invalidateCache('device:info')
 }
 
-function getWebOSVersion(): string {
+/** Chrome build from UA — matches official Kinopub TV device cards. */
+function getChromeHardwareLabel(): string {
   try {
-    if (typeof window !== 'undefined' && (window as any).PalmSystem?.deviceInfo) {
-      const info = JSON.parse((window as any).PalmSystem.deviceInfo)
-      return info.platformVersion || info.sdkVersion || 'unknown'
-    }
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+    const match = ua.match(/Chrome\/[\d.]+/)
+    if (match) return match[0].replace('/', ' ')
   } catch {
-    return 'unknown'
+    // ignore
   }
-  return 'unknown'
+  return 'Chrome'
 }
 
 export async function registerDevice(): Promise<void> {
-  const webosVersion = getWebOSVersion()
   const response = await authFetch(`${BASE_URL}/v1/device/notify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      title: 'LG webOS TV',
-      hardware: `webOS ${webosVersion}`,
-      software: `KPuppy ${APP_VERSION}`
+      title: 'Kinopub TV',
+      hardware: getChromeHardwareLabel(),
+      software: 'Web OS TV (Kinopub TV)'
     })
   })
 
