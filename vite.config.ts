@@ -1,70 +1,41 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import preact from '@preact/preset-vite'
-import { copyFileSync, mkdirSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'fs'
-import { join } from 'path'
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import pkg from './package.json'
 
-function copyWebosMetaPlugin() {
-  let sentryKey = ''
-  let sentryHost = ''
-  let sentryProject = ''
-
-  return {
-    name: 'copy-webos-meta',
-    configResolved(config: { mode: string }) {
-      const env = loadEnv(config.mode, process.cwd(), '')
-      const dsn = env.VITE_SENTRY_DSN || ''
-      const dsnMatch = dsn.match(/^https?:\/\/([^@]+)@([^/]+)\/(.+)$/)
-      sentryKey = dsnMatch?.[1] || ''
-      sentryHost = dsnMatch?.[2] || ''
-      sentryProject = dsnMatch?.[3] || ''
-    },
+export default defineConfig({
+  plugins: [preact(), {
+    name: 'tizen-widget',
     closeBundle() {
-      const srcDir = 'webos-meta'
-      const destDir = 'dist'
-      if (!existsSync(destDir)) {
-        mkdirSync(destDir, { recursive: true })
+      const config = readFileSync('tizen-meta/config.xml', 'utf-8')
+        .replace(/version="0\.2\.0"/, `version="${pkg.version}"`)
+      writeFileSync('dist/config.xml', config)
+      copyFileSync('tizen-meta/icon.png', 'dist/icon.png')
+      copyFileSync('LICENSE', 'dist/LICENSE')
+      copyFileSync('THIRD_PARTY_NOTICES.md', 'dist/THIRD_PARTY_NOTICES.md')
+      mkdirSync('dist/licenses', { recursive: true })
+      for (const dependency of ['preact', 'hls.js', '@sentry/browser', '@sentry/core',
+        '@sentry-internal/browser-utils', '@sentry-internal/feedback', '@sentry-internal/replay', '@sentry-internal/replay-canvas']) {
+        copyFileSync(`node_modules/${dependency}/LICENSE`, `dist/licenses/${dependency.replace('/', '-').replace('@', '')}.txt`)
       }
-      for (const file of readdirSync(srcDir)) {
-        const srcPath = join(srcDir, file)
-        const destPath = join(destDir, file)
-        if (file === 'appinfo.json') {
-          const appinfo = JSON.parse(readFileSync(srcPath, 'utf-8'))
-          appinfo.version = pkg.version
-          writeFileSync(destPath, JSON.stringify(appinfo, null, 2))
-        } else {
-          copyFileSync(srcPath, destPath)
-        }
-      }
-
-      const htmlPath = join(destDir, 'index.html')
-      let html = readFileSync(htmlPath, 'utf-8')
-      html = html.replace(' type="module"', '')
-      html = html.replace(' crossorigin', '')
-      html = html.replace('<script src=', '<script defer src=')
-      html = html.replace('__SENTRY_KEY__', sentryKey)
-      html = html.replace('__SENTRY_HOST__', sentryHost)
-      html = html.replace('__SENTRY_PROJECT__', sentryProject)
+      copyFileSync('licenses/APACHE-2.0.txt', 'dist/licenses/APACHE-2.0.txt')
+      const htmlPath = 'dist/index.html'
+      const html = readFileSync(htmlPath, 'utf-8')
+        .replace(' type="module"', '').replace(' crossorigin', '')
+        .replace('<script src="./assets/', '<script defer src="./assets/')
       writeFileSync(htmlPath, html)
     }
-  }
-}
-
-export default defineConfig({
-  plugins: [preact(), copyWebosMetaPlugin()],
+  }],
   base: './',
   define: {
-    __APP_VERSION__: JSON.stringify(pkg.version)
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __TV_DIAGNOSTICS_URL__: JSON.stringify(process.env.KINOWATCH_DIAGNOSTICS_URL || '')
   },
   build: {
-    target: 'chrome53',
+    target: 'chrome69',
+    cssTarget: 'chrome69',
     outDir: 'dist',
     minify: 'esbuild',
-    rollupOptions: {
-      output: {
-        manualChunks: undefined,
-        format: 'iife'
-      }
-    }
+    rollupOptions: { output: { manualChunks: undefined, format: 'iife' } }
   }
 })

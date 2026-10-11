@@ -1,76 +1,117 @@
-# KPuppy
+# KinoWatch для Samsung Smart TV
 
-![License](https://img.shields.io/badge/license-MIT-blue)
-![webOS](https://img.shields.io/badge/webOS-5.4%2B-green)
+Клиент KinoPub для телевизоров Samsung с Tizen. Каталог, фильмы, сериалы,
+поиск, закладки и история доступны с обычного пульта. После установки
+приложение работает непосредственно на телевизоре; компьютер для просмотра
+не нужен. Для входа нужен собственный аккаунт сервиса.
 
-KinoPub client for LG webOS TV — movies, series, Live TV, collections, and a remote-friendly player.
+**Версия 0.2.2 — экспериментальная.** На Samsung UE43TU7090UXRU (2020,
+Tizen 5.5) пользователь подтвердил вход, каталог, воспроизведение 720p,
+1080p и 4K (2160p), звук и переключение аудиодорожек. Продолжение с
+сохранённого места проверено в 720p. Другие модели и длительный просмотр
+ещё не проверены.
 
-Based on [twttr/KPuppy](https://github.com/twttr/KPuppy). This fork: https://github.com/darkpal/KPuppy
+## Установка
 
-## Install (Homebrew Channel)
+Установка выполняется с Windows через Samsung TV SDK и Developer Mode.
+Нужен Samsung TV сертификат, разрешающий установку на ваш телевизор по DUID.
+Чужой подписанный `.wgt` не является универсальным установщиком для всех ТВ.
+[Как создать сертификат](https://developer.samsung.com/smarttv/develop/getting-started/setting-up-sdk/creating-certificates.html).
 
-Add this repository URL in Homebrew Channel → Settings → Add repository:
+Есть два варианта:
 
-```text
-https://raw.githubusercontent.com/darkpal/KPuppy/main/homebrew/apps.json
+1. **Готовая сборка из Releases:** скачать `KinoWatch-0.2.2-build.zip`,
+   распаковать, подписать своим сертификатом и установить. Node.js для этого
+   варианта не нужен. Архив содержит `dist`, скрипты и инструкции.
+2. **Сборка из исходников:** скачать репозиторий, установить зависимости,
+   собрать и подписать приложение своим сертификатом.
+
+Пошаговая инструкция для обоих вариантов: **[Установка на Samsung](docs/INSTALL.md)**.
+Готовые сборки: **[GitHub Releases](https://github.com/nIzE-666/KinoWatch-Samsung/releases)**.
+
+## Как пользоваться
+
+При первом запуске приложение покажет код и адрес страницы активации.
+Откройте этот адрес на телефоне или компьютере, войдите в свой аккаунт сервиса
+и подтвердите код. После входа выберите фильм или серию и нажмите «Смотреть».
+
+| Кнопка в плеере | Действие |
+| --- | --- |
+| OK / Play-Pause | Пауза или продолжение; на ошибке — повтор |
+| ← / → | Перемотка на 10 секунд |
+| ↑ | Показать управление |
+| ↓ | Скрыть управление |
+| 1 / красная | Качество; применить выбранное через OK |
+| 2 / зелёная | Озвучка |
+| 3 / жёлтая | Субтитры |
+| 4 / синяя | Серии |
+| «Назад» | Закрыть панель, затем выйти из плеера |
+
+Подробнее: **[Вход, настройки и управление](docs/USAGE.md)**.
+
+## Совместимость и ограничения
+
+Основной путь воспроизведения — **H.264 / AVC через HLS4 и Samsung AVPlay**.
+В проверенном потоке звук был AAC-LC. HLS4 — вариант передачи потока;
+разрешение выбирается отдельно.
+
+При первом применении рекомендуемых настроек клиент отключает запрос
+HEVC/HDR в сервисе и предпочитает HLS4. Системные настройки телевизора это
+не меняет. 4K разрешён в запросах и подтверждён пользователем на указанной
+модели ТВ. Если HLS4 отсутствует, используется запасной путь; MP4 через
+браузерный плеер на проверенном ТВ ранее давал ошибки декодирования.
+
+Переключение озвучки проверено пользователем. Субтитры и переходы между
+сериями реализованы, но ещё не проверены на устройстве. Совместимость всех файлов, моделей и длительный
+стабильный просмотр не подтверждены.
+
+Список проверок и известных проблем: **[Совместимость](docs/COMPATIBILITY.md)**.
+Подробные результаты разработки: [Tizen validation](docs/TIZEN_VALIDATION.md).
+
+## Разработка
+
+Нужны Node.js 22+ и npm. Из корня проекта:
+
+```powershell
+npm.cmd ci
+npm.cmd run test:run
+npm.cmd run build
 ```
 
-Packages are published via [GitHub Releases](https://github.com/darkpal/KPuppy/releases/latest).
+Сборка подписанного пакета на Windows:
 
-## Features
-
-- Catalogs: movies, series, concerts, documentaries, TV shows, 3D
-- Live TV (HLS) and collections («Подборки»)
-- Continue watching, bookmarks, «Я смотрю», history, search (webOS keyboard / Magic Remote voice)
-- Title card with plot, cast, similar titles (grid), playback quality
-- Built-in and native webOS players; audio tracks and subtitles; resume from last position
-- Magic Remote pointer/click across the UI; languages: Russian, Ukrainian, English, German
-
-## Screenshots
-
-<img src=".github/screenshots/screen1.png" alt="Home" width="400"> <img src=".github/screenshots/screen2.png" alt="Title details" width="400">
-<img src=".github/screenshots/screen3.png" alt="Catalog" width="400"> <img src=".github/screenshots/screen4.png" alt="Player" width="400">
-
-## Requirements
-
-- Node.js 18+
-- webOS TV SDK (ares-cli)
-
-## Development
-
-```bash
-npm install
-npm run dev
-npm test
-npm run build
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-tizen.ps1 -SdkRoot C:\tizen-studio -Profile KinoWatch
 ```
 
-Shared project knowledge:
+Установка на ТВ, где `192.168.1.50` — пример; замените его своим IP:
 
-- [Performance baseline, backlog, and multi-agent hand-offs](docs/PERFORMANCE.md)
-- [Release and Homebrew publishing](docs/RELEASE.md)
-- [webOS large-image rendering constraints](.cursor/rules/webos-image-rendering.mdc)
-
-Capture README screenshots (device-code login once; tokens in gitignored `.kpuppy-tokens.json`):
-
-```bash
-npm run capture:screenshots
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-tizen.ps1 -SdkRoot C:\tizen-studio -TvAddress 192.168.1.50
 ```
 
-## Deployment
+Результат подписи — `artifacts/KinoWatch.wgt`. Публичная сборка без подписи:
+`npm.cmd run release:prepare`. См. [CONTRIBUTING.md](CONTRIBUTING.md) и
+[порядок выпуска](docs/RELEASE.md).
 
-```bash
-npm run package
-npm run deploy
-ares-launch com.kpuppy.app
-```
+## Приватность и сообщения об ошибках
 
-## Tech Stack
+Аккаунт, токены и история используются приложением для работы с сервисом.
+В обычной сборке отправка технической диагностики на компьютер отключена.
+Сертификаты, пароли, личные токены, локальные логи и подписанные пакеты
+исключены из Git.
 
-- Preact, TypeScript, Vite, Vitest
+В сообщении об ошибке укажите модель ТВ, версию приложения, качество видео
+и текст ошибки. Не прикладывайте токены, файлы сертификатов, коды активации
+или полные ссылки на потоки.
 
-## License
+## Основа и лицензия
 
-MIT — see [LICENSE](LICENSE).
+Основа — [darkpal/KPuppy](https://github.com/darkpal/KPuppy), MIT,
+коммит `fbdc556ef0f14b5ec952a08a9c2cdb1db99d2c0d`, и исходные участники
+[twttr/KPuppy](https://github.com/twttr/KPuppy). Каталог и большинство экранов
+унаследованы; для Samsung добавлены платформа, плеер и установка `.wgt`.
 
-This project is based on [twttr/KPuppy](https://github.com/twttr/KPuppy) (MIT). Modifications in this fork © 2026 darkpal.
+Это самостоятельный общественный порт; проект не заявляет официальной
+связи с Samsung или сервисом KinoPub. Лицензия — [MIT](LICENSE).
+Сведения о зависимостях и изученном GPL-проекте: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

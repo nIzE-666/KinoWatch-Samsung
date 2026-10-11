@@ -13,6 +13,8 @@ import { UserScreen } from './screens/UserScreen'
 import { SeasonsScreen } from './screens/SeasonsScreen'
 import { NewEpisodesScreen } from './screens/NewEpisodesScreen'
 import { PlayerScreen } from './screens/PlayerScreen'
+import { SamsungPlaybackScreen } from './screens/SamsungPlaybackScreen'
+import { isTizen } from './platform/tizen'
 import { RemoteDebugOverlay } from './components/RemoteDebugOverlay'
 import { LoadingState } from './components/LoadingSpinner'
 import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex, getMenuIndexById } from './components/SideMenu'
@@ -23,7 +25,7 @@ import { refreshAccessToken, getItem, getMediaLinks, setOnAuthError, getDeviceIn
 import { applyPreferredDeviceDefaultsOnce } from './preferredDefaults'
 import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl, withHlsAudioIndex, getAvailableQualities } from './webos/player'
-import { platformBack } from './webos/service'
+import { platformBack } from './platform/service'
 import { mergeResumeTime } from './utils/watching'
 import { buildSeasonsSummary, getEpisodeNeighbors, type EpisodeNavigationTarget, type SeasonSummary } from './utils/episodes'
 import { buildVideosSummary, findVideoByNumber } from './utils/videoVersions'
@@ -49,6 +51,7 @@ interface PlayerState {
   streamingType?: string
   initialQuality?: string
   itemId: number
+  mediaId?: number | string
   /** Episode/video number for Kinopub marktime API */
   video: number
   season?: number
@@ -458,7 +461,7 @@ export function App() {
     const localSettings = getLocalSettings()
     setState(prev => ({ ...prev, playerPreparing: true }))
 
-    if (localSettings.playerType === 'native') {
+    if (localSettings.playerType === 'native' && !isTizen()) {
       const { itemId: currentItemId, seriesId, selectedMenuId, screenFocus } = stateRef.current
       saveReturnTo({ itemId: currentItemId, seriesId, selectedMenuId, screenFocus })
       setState(prev => ({
@@ -469,6 +472,9 @@ export function App() {
     }
 
     try {
+      // Ensure the service knows this TV client's codec capabilities before
+      // requesting playback links, including a fast first Play after login.
+      if (isTizen()) await applyPreferredDeviceDefaultsOnce()
       const item = await getItem(itemId)
       const isSeries = Boolean(item.seasons && item.seasons.length > 0)
       const episodeNeighbors = isSeries
@@ -546,17 +552,17 @@ export function App() {
         files || [],
         preferredQuality,
         streamingType,
-        localSettings.playerType === 'builtin' ? { preferClassicHls: true } : undefined
+        localSettings.playerType === 'builtin' || isTizen() ? { preferClassicHls: true } : undefined
       )
       if (!streamUrl) return
 
       const savedAudio = getSavedAudioPreference(itemId)
       const initialAudioIndex = findAudioIndex(audios, savedAudio)
-      if (localSettings.playerType === 'builtin' && initialAudioIndex > 0) {
+      if ((localSettings.playerType === 'builtin' || isTizen()) && initialAudioIndex > 0) {
         streamUrl = withHlsAudioIndex(streamUrl, initialAudioIndex)
       }
 
-      if (localSettings.playerType === 'builtin') {
+      if (localSettings.playerType === 'builtin' || isTizen()) {
         const available = getAvailableQualities(files)
         const initialQuality = preferredQuality && available.includes(preferredQuality)
           ? preferredQuality
@@ -575,6 +581,7 @@ export function App() {
             streamingType,
             initialQuality,
             itemId,
+            mediaId,
             video: videoNumber,
             season: isSeries ? season : undefined,
             episode: isSeries ? episode : videoNumber,
@@ -666,6 +673,7 @@ export function App() {
           }
 
           case KEY_CODES.BACK:
+          case KEY_CODES.TIZEN_BACK:
             if (state.seriesId) {
               handleBackFromSeries()
             } else if (state.itemId) {
@@ -713,10 +721,12 @@ export function App() {
     return <AuthScreen onAuthenticated={handleAuthenticated} />
   }
 
+  const PlaybackScreen = isTizen() && getLocalSettings().playerType === 'native' ? SamsungPlaybackScreen : PlayerScreen
+
   if (state.player) {
     return (
       <>
-        <PlayerScreen
+        <PlaybackScreen
           url={state.player.url}
           title={state.player.title}
           poster={state.player.poster}
@@ -728,6 +738,7 @@ export function App() {
           startTime={state.player.startTime}
           initialAudioIndex={state.player.initialAudioIndex}
           itemId={state.player.itemId}
+          mediaId={state.player.mediaId}
           previousEpisode={state.player.previousEpisode}
           nextEpisode={state.player.nextEpisode}
           season={state.player.season}

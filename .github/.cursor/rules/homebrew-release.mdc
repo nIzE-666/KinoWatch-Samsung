@@ -5,6 +5,10 @@ alwaysApply: true
 
 # KPuppy release checklist
 
+Scope: the checklist below is historical LG webOS / Homebrew guidance only.
+For this Samsung Tizen fork, follow `docs/RELEASE.md`. Do not publish Samsung
+artifacts to darkpal/KPuppy or update the upstream LG Homebrew feed.
+
 When shipping a new version (user asks to release / «выложи» / «собери»):
 
 1. Bump `package.json` version (`0.0.X`).

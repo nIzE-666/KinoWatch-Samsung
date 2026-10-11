@@ -8,6 +8,7 @@ export const KEY_CODES = {
   DOWN: 40,
   ENTER: 13,
   BACK: 461,
+  TIZEN_BACK: 10009,
   BACKSPACE: 8,
   SEARCH: 83,
   RED: 403,
@@ -19,6 +20,7 @@ export const KEY_CODES = {
   PLAY: 415,
   STOP: 413,
   PLAY_PAUSE: 463,
+  TIZEN_PLAY_PAUSE: 10252,
   REWIND: 412,
   FAST_FORWARD: 417,
 } as const
@@ -95,6 +97,7 @@ export function useKeyboardNavigation(
         break
 
       case KEY_CODES.BACK:
+      case KEY_CODES.TIZEN_BACK:
       case KEY_CODES.BACKSPACE:
         if (onBack) {
           onBack()

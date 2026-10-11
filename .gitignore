@@ -6,6 +6,16 @@ dist/
 
 # Package files
 *.ipk
+*.wgt
+artifacts/
+.buildResult/
+*.p12
+*.pfx
+*.pem
+*.key
+profiles.xml
+author-signature.xml
+signature*.xml
 
 # OS files
 .DS_Store
@@ -25,6 +35,8 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
 
 # Local OAuth tokens for screenshot capture (never commit)
 .kpuppy-tokens.json

@@ -1,69 +1,73 @@
-# Releasing KPuppy (webOS / Homebrew)
+# Выпуск KinoWatch для Samsung
 
-Feed used by Homebrew Channel:
+Это порядок выпуска Samsung Tizen порта. Исторические `homebrew/` и
+`webos-meta/` унаследованы из KPuppy; Samsung релиз не использует LG IPK
+и не обновляет feed или репозиторий darkpal/KPuppy.
 
-`https://raw.githubusercontent.com/darkpal/KPuppy/main/homebrew/apps.json`
+## Подготовка
 
-That file’s `manifestUrl` must point at the **current** release manifest. Updating only the GitHub Release is not enough if `apps.json` still pins an older tag.
+1. Для нового выпуска обновите версию в `package.json`, `package-lock.json`
+   и пользовательской документации. Первому Samsung выпуску соответствует 0.2.2.
+2. Выполните `npm.cmd ci`, `npm.cmd run test:run` и `git diff --check`.
+3. На Windows выполните `npm.cmd run release:prepare`.
 
-## Steps
+Последняя команда запускает production build с отключённой диагностикой и
+создаёт в `artifacts`:
 
-```bash
-# 1) version
-# edit package.json → 0.0.X
+- `KinoWatch-0.2.2-build.zip` — готовый `dist`, инструкции и скрипты подписи/установки;
+- `KinoWatch-0.2.2-build.zip.sha256` — контрольная сумма.
 
-npm run test:run
-npm run build
-rm -f com.kpuppy.app_*.ipk
-ares-package dist -o .
+Архив не содержит подписи и сертификатов владельца. Каждый пользователь
+подписывает его своим Samsung TV профилем с DUID своего телевизора.
+Скрипты устанавливают только пакет `KinoWatch1`; системные настройки ТВ
+не меняются автоматически.
 
-# 2) manifest (ipkHash MUST be { "sha256": "..." })
-IPK=com.kpuppy.app_0.0.X_all.ipk
-SHA=$(shasum -a 256 "$IPK" | cut -d' ' -f1)
-# write com.kpuppy.app.manifest.json with version, ipkUrl, ipkHash.sha256
+## Публикация репозитория
 
-# 3) Homebrew feed — required every release
-# homebrew/apps.json → manifestUrl =
-# https://github.com/darkpal/KPuppy/releases/download/v0.0.X/com.kpuppy.app.manifest.json
+Создайте отдельный репозиторий под своим аккаунтом, например
+`YOUR_ACCOUNT/KinoWatch-Samsung`. Укажите источник KPuppy и сохраните LICENSE.
+Перед отправкой просмотрите `git status` и исключения `.gitignore`.
 
-git add package.json homebrew/apps.json src tests
-git commit -m "Release v0.0.X …"
-git push darkpal HEAD:main
+Не отправляйте изменения в существующий `origin`, если он указывает на
+darkpal/KPuppy. Добавьте отдельный remote к своему новому репозиторию.
+Сохраняйте Git-историю исходного проекта; Samsung изменения оформляйте
+отдельным коммитом. Публичная выкладка требует решения владельца проекта.
 
-gh release create v0.0.X "$IPK" com.kpuppy.app.manifest.json \
-  --repo darkpal/KPuppy --target main --title "v0.0.X" --notes "…"
+GitHub Actions из `.github/workflows/ci.yml` запускает тесты, сборку и
+подготовку ZIP. Он загружает только архив сборки и SHA256 как CI artifacts;
+GitHub Release автоматически не публикуется. Подпись и Samsung сертификаты
+для CI не требуются.
+
+## Первый GitHub Release
+
+После публикации исходников и успешного CI:
+
+1. Откройте Releases → Draft a new release.
+2. Создайте тег `v0.2.2` на коммите с Samsung портом.
+3. Название: `KinoWatch 0.2.2 — Samsung Tizen preview`.
+4. Используйте текст из [RELEASE_NOTES_0.2.2.md](RELEASE_NOTES_0.2.2.md).
+5. Прикрепите `KinoWatch-0.2.2-build.zip` и файл `.sha256`.
+6. Отметьте **Set as a pre-release**: проверена одна модель, совместимость
+   всех файлов и длительный просмотр пока не подтверждены.
+7. Опубликуйте и проверьте скачивание ZIP, его SHA256 и наличие инструкций.
+
+Локальный `artifacts/KinoWatch.wgt`, подписанный для тестового телевизора,
+не прикладывается как универсальный установщик. Private keys, `.p12`, `.pfx`,
+profiles.xml и персональные токены не публикуются.
+
+## Проверка содержимого архива
+
+Внутри должны быть `dist/config.xml`, `dist/index.html`, assets, иконка,
+LICENSE, THIRD_PARTY_NOTICES и лицензии зависимостей, а также
+`scripts/package-tizen.ps1`, `scripts/install-tizen.ps1` и `docs/INSTALL.md`.
+В `dist` не должно быть author-signature.xml или signature*.xml.
+
+На Windows можно проверить сумму:
+
+```powershell
+Get-FileHash -Algorithm SHA256 -LiteralPath .\KinoWatch-0.2.2-build.zip
 ```
 
-## Common failure
-
-`Invalid file checksum (undefined expected, got …)` → manifest has string `ipkHash` instead of `{ "sha256": "…" }`.
-
-## Distinguish Homebrew checksum errors from LG installer errors
-
-There are two separate verification stages:
-
-1. Homebrew Channel downloads the IPK and compares it with
-   `manifest.ipkHash.sha256`.
-2. LG `com.webos.appInstallService/dev/install` verifies and installs that
-   already-downloaded IPK.
-
-`Invalid file checksum (<expected> expected, got <actual>)` is stage 1. Fix the
-manifest or uploaded asset.
-
-`-5: ipk verified failed` is stage 2. Do not rotate the manifest hash blindly.
-First prove the public artifact is intact:
-
-```bash
-curl -L -o /tmp/kpuppy.ipk \
-  https://github.com/darkpal/KPuppy/releases/download/v0.0.X/com.kpuppy.app_0.0.X_all.ipk
-shasum -a 256 /tmp/kpuppy.ipk
-ares-package -c dist
-ares-package -I /tmp/kpuppy.ipk
-```
-
-If the downloaded SHA matches the manifest and `ares-package` accepts the IPK,
-the failure is device-side. Check automatic TV date/time, an active/extended
-Developer Mode session on unrooted setups, or Homebrew Channel root/elevation
-state after reboot. A cold TV reboot may be required after correcting that
-state. Repacking identical content does not address device signature/session
-verification.
+Сравните её с опубликованным `.sha256`. Проверка checksum подтверждает
+целостность скачанного архива; работоспособность на новой модели проверяется
+отдельно и заносится в [COMPATIBILITY.md](COMPATIBILITY.md).

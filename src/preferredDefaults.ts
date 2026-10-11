@@ -1,7 +1,11 @@
 import { getDeviceInfo, updateDeviceSettings, DeviceSettings, SelectOption } from './api/kinopub'
 import { writeStorage, removeStorage } from './storage'
+import { isTizen } from './platform/tizen'
 
 const DEVICE_DEFAULTS_KEY = 'kpuppy_device_defaults_applied'
+const TIZEN_DEFAULTS_KEY = 'kinowatch_tizen_avc_hls4_defaults_applied'
+const defaultsKey = () => isTizen() ? TIZEN_DEFAULTS_KEY : DEVICE_DEFAULTS_KEY
+let defaultsPending: Promise<void> | null = null
 
 function findOptionId(options: SelectOption[], matchers: RegExp[]): number | undefined {
   for (const matcher of matchers) {
@@ -13,10 +17,13 @@ function findOptionId(options: SelectOption[], matchers: RegExp[]): number | und
 
 /** Preferred Kinopub device settings for a fresh webOS install (matches typical TV setup). */
 export function buildPreferredDeviceSettings(settings: DeviceSettings): Record<string, number> {
+  const samsung = isTizen()
   const preferred: Record<string, number> = {
     support4k: 1,
-    supportHevc: 1,
-    supportHdr: 1,
+    // The tested HEVC stream fails AVPlay seek and media-element decoding.
+    // Advertise AVC capability for this client, without changing TV settings.
+    supportHevc: samsung ? 0 : 1,
+    supportHdr: samsung ? 0 : 1,
     supportSsl: 1,
     mixedPlaylist: 0,
   }
@@ -27,12 +34,12 @@ export function buildPreferredDeviceSettings(settings: DeviceSettings): Record<s
     /\bnetherlands\b/i,
     /\bнидерланд/i,
   ])
-  if (netherlandsId !== undefined) {
+  if (!samsung && netherlandsId !== undefined) {
     preferred.serverLocation = netherlandsId
   }
 
   // Exact "HLS" — not HLS2 / HLS4
-  const hlsId = findOptionId(settings.streamingType || [], [/^hls$/i])
+  const hlsId = findOptionId(settings.streamingType || [], samsung ? [/^hls4$/i, /^http$/i, /^mp4$/i] : [/^hls$/i])
   if (hlsId !== undefined) {
     preferred.streamingType = hlsId
   }
@@ -43,18 +50,18 @@ export function buildPreferredDeviceSettings(settings: DeviceSettings): Record<s
 export function hasAppliedDeviceDefaults(): boolean {
   // If storage is broken, skip re-applying defaults every launch.
   try {
-    return localStorage.getItem(DEVICE_DEFAULTS_KEY) === '1'
+    return localStorage.getItem(defaultsKey()) === '1'
   } catch {
     return true
   }
 }
 
 export function markDeviceDefaultsApplied(): void {
-  writeStorage(DEVICE_DEFAULTS_KEY, '1')
+  writeStorage(defaultsKey(), '1')
 }
 
 export function clearDeviceDefaultsApplied(): void {
-  removeStorage(DEVICE_DEFAULTS_KEY)
+  removeStorage(defaultsKey())
 }
 
 /** Apply preferred device settings. Pass force=true to re-apply from Settings. */
@@ -69,5 +76,8 @@ export async function applyPreferredDeviceDefaults(force = false): Promise<void>
 
 /** Apply preferred device settings once per install after login. */
 export async function applyPreferredDeviceDefaultsOnce(): Promise<void> {
-  await applyPreferredDeviceDefaults(false)
+  if (!defaultsPending) {
+    defaultsPending = applyPreferredDeviceDefaults(false).finally(() => { defaultsPending = null })
+  }
+  await defaultsPending
 }

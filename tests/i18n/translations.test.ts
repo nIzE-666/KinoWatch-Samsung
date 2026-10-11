@@ -87,7 +87,7 @@ describe('translations', () => {
   describe('specific translations exist', () => {
     it('has app name in all languages', () => {
       allLanguages.forEach(lang => {
-        expect(translations[lang].appName).toBe('KPuppy')
+        expect(translations[lang].appName).toBe('KinoWatch')
       })
     })
 

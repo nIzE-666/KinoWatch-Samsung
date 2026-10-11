@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'preact/hooks'
 import type { JSX } from 'preact'
 import { Audio, Subtitle, VideoFile } from '../api/kinopub'
-import { withHlsAudioIndex, getStreamUrl, getAvailableQualities } from '../webos/player'
+import { withHlsAudioIndex, getStreamUrl, getAvailableQualities } from '../platform/media'
 import { saveAudioPreference, getAudioTrackName } from '../storage'
 import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
@@ -82,6 +82,8 @@ export interface PlayerProps {
   startTime?: number
   initialAudioIndex?: number
   itemId?: number
+  mediaId?: number | string
+  preferHttp?: boolean
   previousEpisode?: EpisodeNavigationTarget
   nextEpisode?: EpisodeNavigationTarget
   season?: number
@@ -136,6 +138,7 @@ export function PlayerScreen({
   subtitles = [],
   files = [],
   streamingType,
+  preferHttp = false,
   initialQuality,
   startTime = 0,
   initialAudioIndex = 0,
@@ -194,6 +197,7 @@ export function PlayerScreen({
     selectedQuality: initialQuality || availableQualities[0] || null
   })
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [qualityHighlight, setQualityHighlight] = useState<string | null>(null)
   const [liveDiagLines, setLiveDiagLines] = useState<string[] | null>(null)
   const [isLiveStream, setIsLiveStream] = useState(false)
   const [hoverPreview, setHoverPreview] = useState<{ percent: number; time: number } | null>(null)
@@ -682,14 +686,14 @@ export function PlayerScreen({
       return
     }
 
-    let nextSrc = getStreamUrl(files, quality, streamingType, { preferClassicHls: true })
+    let nextSrc = getStreamUrl(files, quality, streamingType, { preferClassicHls: !preferHttp, preferHttp })
     if (!nextSrc) return
     nextSrc = withHlsAudioIndex(nextSrc, controls.selectedAudioIndex)
 
     setControls(prev => ({ ...prev, selectedQuality: quality, activePanel: 'none' }))
     setErrorMessage(null)
     reloadStream(nextSrc, video.currentTime, video.paused)
-  }, [files, streamingType, controls.selectedQuality, controls.selectedAudioIndex, reloadStream])
+  }, [files, streamingType, preferHttp, controls.selectedQuality, controls.selectedAudioIndex, reloadStream])
 
   const clearSubtitleApplyTimer = useCallback(() => {
     if (subtitleApplyTimerRef.current) {
@@ -817,13 +821,14 @@ export function PlayerScreen({
     if (availableQualities.length <= 1) return
     if (controls.activePanel === 'audio') flushAudioSelection()
     if (controls.activePanel === 'subtitles') flushSubtitleSelection()
+    setQualityHighlight(controls.selectedQuality)
     setControls(prev => ({
       ...prev,
       visible: true,
       activePanel: prev.activePanel === 'quality' ? 'none' : 'quality'
     }))
     showControls()
-  }, [availableQualities.length, showControls, controls.activePanel, flushAudioSelection, flushSubtitleSelection])
+  }, [availableQualities.length, showControls, controls.activePanel, controls.selectedQuality, flushAudioSelection, flushSubtitleSelection])
 
   const openEpisodesPanel = useCallback(() => {
     if (!hasEpisodesPanel) return
@@ -951,12 +956,11 @@ export function PlayerScreen({
         4: 'MEDIA_ERR_SRC_NOT_SUPPORTED'
       }
       const errorType = errorCodes[error?.code || 0] || 'UNKNOWN'
-      const details = error?.message || 'No details'
       const isHls = isHlsPlaylistUrl(url)
       const hint = error?.code === 4 && isHls
         ? ' This live stream format is likely unsupported on this TV (codec/playlist), not a broken app URL.'
         : ''
-      const msg = `${errorType} (${error?.code}): ${details}${hint}`
+      const msg = `${errorType} (${error?.code || 0})${hint}`
       setErrorMessage(msg)
     }
 
@@ -988,11 +992,20 @@ export function PlayerScreen({
       }
 
       const mediaKey = e.key
+      if (preferHttp && e.keyCode >= 49 && e.keyCode <= 52) {
+        if (e.keyCode === 49) openQualityPanel()
+        else if (e.keyCode === 50) openAudioPanel()
+        else if (e.keyCode === 51) openSubtitlesPanel()
+        else openEpisodesPanel()
+        e.preventDefault()
+        return
+      }
       if (
         mediaKey === 'MediaPlayPause' ||
         mediaKey === 'MediaPlay' ||
         mediaKey === 'MediaPause' ||
         e.keyCode === KEY_CODES.PLAY_PAUSE ||
+        e.keyCode === KEY_CODES.TIZEN_PLAY_PAUSE ||
         e.keyCode === KEY_CODES.PLAY ||
         e.keyCode === KEY_CODES.PAUSE
       ) {
@@ -1009,17 +1022,28 @@ export function PlayerScreen({
 
       if (controls.activePanel !== 'none') {
         if (controls.activePanel === 'quality') {
-          const currentIndex = Math.max(0, availableQualities.indexOf(controls.selectedQuality || ''))
+          const currentIndex = Math.max(0, availableQualities.indexOf((preferHttp ? qualityHighlight : controls.selectedQuality) || ''))
           switch (e.keyCode) {
             case KEY_CODES.UP:
-              if (currentIndex > 0) selectQuality(availableQualities[currentIndex - 1])
+              if (currentIndex > 0) {
+                if (preferHttp) setQualityHighlight(availableQualities[currentIndex - 1])
+                else selectQuality(availableQualities[currentIndex - 1])
+              }
               e.preventDefault()
               break
             case KEY_CODES.DOWN:
-              if (currentIndex < availableQualities.length - 1) selectQuality(availableQualities[currentIndex + 1])
+              if (currentIndex < availableQualities.length - 1) {
+                if (preferHttp) setQualityHighlight(availableQualities[currentIndex + 1])
+                else selectQuality(availableQualities[currentIndex + 1])
+              }
               e.preventDefault()
               break
             case KEY_CODES.ENTER:
+              if (preferHttp && qualityHighlight) selectQuality(qualityHighlight)
+              setControls(prev => ({ ...prev, activePanel: 'none' }))
+              e.preventDefault()
+              break
+            case KEY_CODES.TIZEN_BACK:
             case KEY_CODES.BACK:
             case KEY_CODES.RED:
               setControls(prev => ({ ...prev, activePanel: 'none' }))
@@ -1073,6 +1097,7 @@ export function PlayerScreen({
               playSelectedEpisode()
               e.preventDefault()
               break
+            case KEY_CODES.TIZEN_BACK:
             case KEY_CODES.BACK:
             case KEY_CODES.BLUE:
               setControls(prev => ({ ...prev, activePanel: 'none' }))
@@ -1117,7 +1142,8 @@ export function PlayerScreen({
             e.preventDefault()
             break
           case KEY_CODES.ENTER:
-          case KEY_CODES.BACK:
+          case KEY_CODES.TIZEN_BACK:
+            case KEY_CODES.BACK:
             if (controls.activePanel === 'audio') flushAudioSelection()
             if (controls.activePanel === 'subtitles') flushSubtitleSelection()
             setControls(prev => ({ ...prev, activePanel: 'none' }))
@@ -1231,7 +1257,8 @@ export function PlayerScreen({
           }
           e.preventDefault()
           break
-        case KEY_CODES.BACK:
+        case KEY_CODES.TIZEN_BACK:
+            case KEY_CODES.BACK:
           flushTime()
           onBack()
           e.preventDefault()
@@ -1264,6 +1291,8 @@ export function PlayerScreen({
     audios,
     selectableSubs,
     availableQualities,
+    preferHttp,
+    qualityHighlight,
     togglePlay,
     seek,
     selectAudio,
@@ -1323,7 +1352,6 @@ export function PlayerScreen({
         <div class="player-error">
           <div class="player-error-title">Playback Error</div>
           <div class="player-error-message">{errorMessage}</div>
-          <div class="player-error-url">{url.substring(0, 80)}...</div>
         </div>
       )}
 
@@ -1553,7 +1581,7 @@ export function PlayerScreen({
                   <button
                     type="button"
                     key={q}
-                    class={`player-panel-item ${q === controls.selectedQuality ? 'selected' : ''}`}
+                    class={`player-panel-item ${q === (preferHttp ? qualityHighlight : controls.selectedQuality) ? 'selected' : ''}`}
                     onMouseEnter={() => showControls()}
                     onClick={(event) => {
                       event.stopPropagation()

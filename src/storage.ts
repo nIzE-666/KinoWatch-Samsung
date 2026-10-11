@@ -1,3 +1,5 @@
+import { isTizen } from './platform/tizen'
+
 const STORAGE_KEY = 'kpuppy_tokens'
 const SETTINGS_KEY = 'kpuppy_settings'
 const RETURN_TO_KEY = 'kpuppy_return_to'
@@ -55,12 +57,13 @@ export function removeStorage(key: string): void {
 
 export function getLocalSettings(): LocalSettings {
   const data = readStorage(SETTINGS_KEY)
-  if (!data) return DEFAULT_SETTINGS
+  const defaults = isTizen() ? { ...DEFAULT_SETTINGS, playerType: 'native' as const } : DEFAULT_SETTINGS
+  if (!data) return defaults
 
   try {
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(data) }
+    return { ...defaults, ...JSON.parse(data) }
   } catch {
-    return DEFAULT_SETTINGS
+    return defaults
   }
 }
 

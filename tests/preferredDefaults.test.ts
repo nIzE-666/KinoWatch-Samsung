@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { buildPreferredDeviceSettings, hasAppliedDeviceDefaults, markDeviceDefaultsApplied, applyPreferredDeviceDefaultsOnce, applyPreferredDeviceDefaults } from '../src/preferredDefaults'
 import type { DeviceSettings } from '../src/api/kinopub'
 
@@ -29,7 +29,28 @@ const baseSettings = (): DeviceSettings => ({
 describe('preferredDefaults', () => {
   beforeEach(() => {
     localStorage.removeItem('kpuppy_device_defaults_applied')
+    localStorage.removeItem('kinowatch_tizen_avc_hls4_defaults_applied')
     vi.clearAllMocks()
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('requests AVC and HLS4 for Samsung without changing the selected server', () => {
+    vi.stubGlobal('tizen', {})
+    expect(buildPreferredDeviceSettings(baseSettings())).toEqual({
+      support4k: 1, supportHevc: 0, supportHdr: 0, supportSsl: 1,
+      mixedPlaylist: 0, streamingType: 12
+    })
+  })
+  it('migrates an earlier Samsung install once and shares simultaneous callers', async () => {
+    vi.stubGlobal('tizen', {})
+    localStorage.setItem('kpuppy_device_defaults_applied', '1')
+    vi.mocked(getDeviceInfo).mockResolvedValue({ id: 42, settings: baseSettings() })
+    vi.mocked(updateDeviceSettings).mockResolvedValue()
+    await Promise.all([applyPreferredDeviceDefaultsOnce(), applyPreferredDeviceDefaultsOnce()])
+    await applyPreferredDeviceDefaultsOnce()
+    expect(updateDeviceSettings).toHaveBeenCalledOnce()
+    expect(updateDeviceSettings).toHaveBeenCalledWith(42, expect.objectContaining({ supportHevc: 0, supportHdr: 0 }))
+    expect(localStorage.getItem('kinowatch_tizen_avc_hls4_defaults_applied')).toBe('1')
   })
 
   it('builds toggles and picks Netherlands + classic HLS', () => {

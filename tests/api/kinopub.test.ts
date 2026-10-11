@@ -502,6 +502,20 @@ describe('kinopub API', () => {
       expect(mockFetch).toHaveBeenCalledTimes(1)
       expect(second).toEqual(first)
     })
+    it('refreshes one video after a connection failure and caches the fresh link', async () => {
+      const response = (name: string) => ({
+        ok: true, status: 200,
+        json: async () => ({ files: [{ quality: '720p', url: { http: `https://example.com/${name}.mp4` } }], subtitles: [] })
+      })
+      mockFetch.mockResolvedValueOnce(response('old')).mockResolvedValueOnce(response('fresh'))
+      await getMediaLinks(77)
+      const [first, second] = await Promise.all([getMediaLinks(77, { refresh: true }), getMediaLinks(77, { refresh: true })])
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      expect(first.files[0].url.http).toBe('https://example.com/fresh.mp4')
+      expect(second).toEqual(first)
+      expect(await getMediaLinks(77)).toEqual(first)
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+    })
   })
 
   describe('searchItems', () => {

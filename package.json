@@ -1,7 +1,7 @@
 {
-  "name": "kpuppy",
-  "version": "0.1.8",
-  "description": "KinoPub client for LG webOS TV",
+  "name": "kinowatch-samsung",
+  "version": "0.2.2",
+  "description": "KinoWatch for Samsung Tizen 5.5 TV",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,14 +9,15 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "package": "ares-package dist -o .",
-    "deploy": "ares-install *.ipk",
+    "package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-tizen.ps1",
+    "deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-tizen.ps1",
+    "release:prepare": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-release.ps1",
     "lint": "eslint src/",
-    "lint:css": "stylelint 'src/**/*.css'",
+    "lint:css": "stylelint \"src/**/*.css\"",
     "capture:screenshots": "node scripts/capture-screenshots.mjs"
   },
   "browserslist": [
-    "Chrome 53"
+    "Chrome 69"
   ],
   "dependencies": {
     "@sentry/browser": "^10.32.1",

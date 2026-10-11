@@ -1,0 +1,61 @@
+body.avplay-active,
+body.avplay-active #app,
+html.avplay-active {
+  background: transparent;
+}
+
+.player-screen.samsung-player {
+  background: transparent;
+}
+
+.samsung-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+}
+
+.samsung-buffer {
+  position: absolute;
+  top: 42%;
+  left: 42%;
+  z-index: 20;
+  padding: 24px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  font-size: 26px;
+}
+
+.samsung-buffer .spinner { margin: 0 auto 20px; }
+
+.samsung-subtitle {
+  position: absolute;
+  bottom: 160px;
+  left: 10%;
+  right: 10%;
+  z-index: 25;
+  color: white;
+  font-size: 38px;
+  line-height: 1.4;
+  text-align: center;
+  white-space: pre-line;
+  text-shadow: 2px 2px 4px #000, -2px -2px 4px #000;
+  pointer-events: none;
+}
+
+.samsung-controls { display: flex; flex-wrap: wrap; margin-top: 24px; }
+
+.samsung-controls button {
+  margin: 0 12px 12px 0;
+  padding: 14px 20px;
+  color: white;
+  border: 3px solid transparent;
+  background: rgba(30, 30, 30, 0.9);
+  border-radius: 8px;
+  font-size: 24px;
+}
+.samsung-controls button.focused { border-color: white; background: #8c1018; }
+.samsung-message { position: absolute; top: 35%; left: 15%; right: 15%; padding: 30px; background: #222; border-radius: 12px; font-size: 28px; }
+.samsung-help { font-size: 20px; color: #ddd; }
+.samsung-player .player-panel { z-index: 30; }

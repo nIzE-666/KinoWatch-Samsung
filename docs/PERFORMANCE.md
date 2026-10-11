@@ -7,6 +7,39 @@ rejected, or superseded.
 
 Last updated: **2026-08-15**, release **v0.1.5**.
 
+Samsung fork update: **2026-10-12**, KinoWatch **0.2.2**. The upstream webOS
+measurements below remain reference history. This fork targets Tizen 5.5 /
+Chromium 69 and keeps the catalogue caches and poster pipeline. AVPlay UI
+updates at most once per displayed second; progress is submitted every 10
+seconds and at lifecycle boundaries. Quality highlight applies only on OK.
+Preparation has a progress-aware 45-second inactivity limit and a 120-second
+hard cap. AVC HLS4 is selected first at the chosen quality after the real TV
+stalled at 99% preparing the supplied HEVC HLS. Resume seeks wait for the first playback
+clock because READY seek stalled on the physical TV. Connection recovery
+refreshes only the current video's links and preserves position; automatic
+attempts are capped at two. See [Tizen validation](TIZEN_VALIDATION.md) for
+device evidence and unresolved playback interruptions. Final automated suite:
+**683 passing tests**. No catalogue metadata or image stages were removed.
+PLAYING seek also failed for the tested MP4, and the user reported an app exit.
+MP4 uses the HTML media element when HLS4 is absent. Media-element MP4 decoding
+also failed, so this client requests AVC instead of HEVC/HDR. The MP4 codec
+was not independently established from the HLS manifest.
+Codec settings are applied once per client migration, before obtaining links;
+only media-link caches are invalidated on a service-device settings change.
+The service returns AVC manifests, but progressive MP4 resume still fails in
+the media element. HLS4 is now selected first through AVPlay to avoid that path.
+The user confirmed picture, sound and resume at 138 seconds using AVC HLS4.
+In that run preparation took ~12.2 seconds and the resume seek took ~4.8 seconds.
+On 2026-10-12 the user also confirmed 4K playback on the UE43TU7090UXRU with
+the installed production app. No 4K manifest, timing or resume measurement
+was captured because temporary diagnostics were disabled.
+The user subsequently confirmed 720p, 1080p, 4K, sound and audio-track
+switching without problems on this model; no additional codec measurements
+were captured.
+Long playback and recovery from another connection interruption remain unverified.
+Production bundle: **589.02 kB**, gzip **177.32 kB**; temporary PC diagnostics
+are disabled in the final package.
+
 ## 1. Product and platform constraints
 
 KPuppy targets LG webOS TVs and an old browser engine (`browserslist` is

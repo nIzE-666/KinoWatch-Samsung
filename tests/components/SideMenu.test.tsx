@@ -39,7 +39,7 @@ describe('SideMenu', () => {
         <SideMenu selectedId="home" focusedIndex={0} onSelect={() => {}} />
       )
 
-      expect(screen.getByText('KPuppy')).toBeDefined()
+      expect(screen.getByText('KinoWatch')).toBeDefined()
     })
 
     it('shows menu labels when expanded', () => {
@@ -61,7 +61,7 @@ describe('SideMenu', () => {
         <SideMenu selectedId="home" focusedIndex={null} onSelect={() => {}} />
       )
 
-      expect(screen.getByText('KPuppy')).toBeDefined()
+      expect(screen.getByText('KinoWatch')).toBeDefined()
       expect(screen.getByText('Home')).toBeDefined()
     })
 

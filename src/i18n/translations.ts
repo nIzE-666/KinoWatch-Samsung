@@ -221,7 +221,7 @@ export interface Translations {
 }
 
 const en: Translations = {
-  appName: 'KPuppy',
+  appName: 'KinoWatch',
   loading: 'Loading...',
   loadingContent: 'Loading content...',
 
@@ -347,7 +347,7 @@ const en: Translations = {
   original: 'Original',
 
   player: 'Player',
-  playerNative: 'Native (webOS)',
+  playerNative: 'Native (Samsung AVPlay)',
   playerBuiltin: 'Built-in',
 
   addToBookmarks: 'Add to Bookmarks',
@@ -409,7 +409,7 @@ const en: Translations = {
 }
 
 const ru: Translations = {
-  appName: 'KPuppy',
+  appName: 'KinoWatch',
   loading: 'Загрузка...',
   loadingContent: 'Загрузка контента...',
 
@@ -535,7 +535,7 @@ const ru: Translations = {
   original: 'Оригинал',
 
   player: 'Плеер',
-  playerNative: 'Нативный (webOS)',
+  playerNative: 'Нативный (Samsung AVPlay)',
   playerBuiltin: 'Встроенный',
 
   addToBookmarks: 'Добавить в закладки',
@@ -597,7 +597,7 @@ const ru: Translations = {
 }
 
 const de: Translations = {
-  appName: 'KPuppy',
+  appName: 'KinoWatch',
   loading: 'Laden...',
   loadingContent: 'Inhalte werden geladen...',
 
@@ -723,7 +723,7 @@ const de: Translations = {
   original: 'Original',
 
   player: 'Player',
-  playerNative: 'Nativ (webOS)',
+  playerNative: 'Nativ (Samsung AVPlay)',
   playerBuiltin: 'Eingebaut',
 
   addToBookmarks: 'Zu Lesezeichen hinzufügen',
@@ -785,7 +785,7 @@ const de: Translations = {
 }
 
 const uk: Translations = {
-  appName: 'KPuppy',
+  appName: 'KinoWatch',
   loading: 'Завантаження...',
   loadingContent: 'Завантаження вмісту...',
 
@@ -911,7 +911,7 @@ const uk: Translations = {
   original: 'Оригінал',
 
   player: 'Плеєр',
-  playerNative: 'Нативний (webOS)',
+  playerNative: 'Нативний (Samsung AVPlay)',
   playerBuiltin: 'Вбудований',
 
   addToBookmarks: 'Додати до закладок',

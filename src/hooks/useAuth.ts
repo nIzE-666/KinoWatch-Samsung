@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'preact/hooks'
+import { useState, useEffect, useCallback, useRef } from 'preact/hooks'
 import { requestDeviceCode, pollForToken, registerDevice, DeviceCodeResponse } from '../api/kinopub'
 import { saveTokens, clearTokens, isAuthenticated as checkAuth } from '../storage'
 
@@ -16,6 +16,7 @@ export interface UseAuthResult extends AuthState {
 }
 
 export function useAuth(): UseAuthResult {
+  const expiresAt = useRef(0)
   const [state, setState] = useState<AuthState>({
     isAuthenticated: checkAuth(),
     isLoading: false,
@@ -32,6 +33,7 @@ export function useAuth(): UseAuthResult {
 
     try {
       const response = await requestDeviceCode()
+      expiresAt.current = Date.now() + response.expiresIn * 1000
       setDeviceCode(response)
       setPollInterval(response.interval * 1000)
       setState(prev => ({
@@ -67,9 +69,20 @@ export function useAuth(): UseAuthResult {
       return
     }
 
+    let cancelled = false
+    let busy = false
     const intervalId = setInterval(async () => {
+      if (cancelled || busy) return
+      if (Date.now() >= expiresAt.current) {
+        setDeviceCode(null)
+        setPollInterval(null)
+        setState(prev => ({ ...prev, userCode: null, verificationUri: null, error: 'Код истёк. Нажмите OK, чтобы получить новый.' }))
+        return
+      }
+      busy = true
       try {
         const result = await pollForToken(deviceCode.code)
+        if (cancelled) return
         if (result) {
           saveTokens({
             access: result.accessToken,
@@ -89,16 +102,19 @@ export function useAuth(): UseAuthResult {
           }))
         }
       } catch (err) {
+        if (cancelled) return
         setState(prev => ({
           ...prev,
           error: err instanceof Error ? err.message : 'Authentication failed'
         }))
         setDeviceCode(null)
         setPollInterval(null)
+      } finally {
+        busy = false
       }
     }, pollInterval)
 
-    return () => clearInterval(intervalId)
+    return () => { cancelled = true; clearInterval(intervalId) }
   }, [deviceCode, pollInterval, state.isAuthenticated])
 
   return {

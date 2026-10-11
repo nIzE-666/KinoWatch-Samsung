@@ -1,3 +1,4 @@
+import { isTizen } from '../platform/tizen'
 import { getTokens, saveTokens, saveLocalPlaybackProgress, Tokens } from '../storage'
 import { getCached, setCache, createCacheKey, invalidateCache, cachedFetch, withInflight } from './cache'
 
@@ -872,6 +873,7 @@ export async function updateDeviceSettings(deviceId: number, settings: UpdateSet
 
   await response.json()
   invalidateCache('device:info')
+  invalidateCache('media-links:')
 }
 
 /** Chrome build from UA — matches official Kinopub TV device cards. */
@@ -891,9 +893,9 @@ export async function registerDevice(): Promise<void> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      title: 'Kinopub TV',
+      title: isTizen() ? 'KinoWatch Samsung' : 'Kinopub TV',
       hardware: getChromeHardwareLabel(),
-      software: 'Web OS TV (Kinopub TV)'
+      software: isTizen() ? 'Tizen TV (KinoWatch)' : 'Web OS TV (Kinopub TV)'
     })
   })
 
@@ -974,10 +976,10 @@ export interface MediaLinks {
 }
 
 /** Full files + subtitles for a media/video id (Kinopub media-links). */
-export async function getMediaLinks(mediaId: number | string): Promise<MediaLinks> {
+export async function getMediaLinks(mediaId: number | string, options?: { refresh?: boolean; signal?: AbortSignal }): Promise<MediaLinks> {
   const cacheKey = createCacheKey('media-links', mediaId)
-  return cachedFetch(cacheKey, async () => {
-    const response = await authFetch(`${BASE_URL}/v1/items/media-links?mid=${mediaId}`)
+  const fetchLinks = async (): Promise<MediaLinks> => {
+    const response = await authFetch(`${BASE_URL}/v1/items/media-links?mid=${mediaId}`, { signal: options?.signal })
     if (!response.ok) {
       throw new ApiError('Failed to fetch media links', response.status)
     }
@@ -986,7 +988,17 @@ export async function getMediaLinks(mediaId: number | string): Promise<MediaLink
       files: Array.isArray(data.files) ? data.files.map((f: Record<string, unknown>) => normalizeVideoFile(f)) : [],
       subtitles: normalizeSubtitles(data.subtitles)
     }
-  })
+  }
+  if (options?.refresh) {
+    // Refresh only this video's links after a connection failure. Keep the
+    // catalogue and progress caches warm, and share concurrent refreshes.
+    return withInflight(`${cacheKey}:refresh`, async () => {
+      const result = await fetchLinks()
+      setCache(cacheKey, result)
+      return result
+    })
+  }
+  return cachedFetch(cacheKey, fetchLinks)
 }
 
 export async function getItem(id: number): Promise<ItemDetails> {
